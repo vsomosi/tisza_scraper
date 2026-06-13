@@ -94,7 +94,8 @@ try:
     
     # Plotly terület-görbe a hozamhoz (oszlopdiagram helyett)
     fig_hozam = px.area(df_filtered[['Reggeli hozam']].dropna().reset_index(), x='Észlelés dátuma', y='Reggeli hozam',
-                        markers=True, line_shape='spline', color_discrete_sequence=['#00b4d8'])
+                        markers=True, line_shape='spline', color_discrete_sequence=['#00b4d8'], text='Reggeli hozam')
+    fig_hozam.update_traces(textposition="top center")
     fig_hozam.update_layout(xaxis_title="", yaxis_title="Hozam", hovermode="x unified", xaxis=dict(tickformat="%m.%d."))
     st.plotly_chart(fig_hozam, use_container_width=True)
 except FileNotFoundError:
