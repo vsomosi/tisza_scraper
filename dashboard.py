@@ -46,15 +46,36 @@ try:
     vizallas_kombinalt = pd.concat([df_tegnap_reggel, df_tegnap_este, df_ma_reggel]).sort_index()
     vizallas_kombinalt = vizallas_kombinalt[~vizallas_kombinalt.index.duplicated(keep='last')]
 
+    # --- Időszak szűrése csúszkával ---
+    min_date = df.index.min().date()
+    max_date = df.index.max().date()
+    
+    if min_date < max_date:
+        default_start = (df.index.max() - pd.Timedelta(days=14)).date()
+        default_start = max(min_date, default_start) # Biztosítjuk, hogy ne menjünk a legelső adat elé
+        start_date, end_date = st.slider(
+            "📅 Időszak kiválasztása (alapértelmezés: utolsó 2 hét):",
+            min_value=min_date,
+            max_value=max_date,
+            value=(default_start, max_date),
+            format="YYYY.MM.DD"
+        )
+    else:
+        start_date, end_date = min_date, max_date
+
+    # Szűrés a kiválasztott dátumokra
+    vizallas_filtered = vizallas_kombinalt[(vizallas_kombinalt.index.date >= start_date) & (vizallas_kombinalt.index.date <= end_date)]
+    df_filtered = df[(df.index.date >= start_date) & (df.index.date <= end_date)]
+
     # 4. Grafikonok kirajzolása
     st.subheader("📈 Vízállás alakulása (cm)")
     
     # Plotly area grafikon a vízálláshoz (Modern, lekerekített, pontos X tengellyel)
-    fig_viz = px.area(vizallas_kombinalt.reset_index(), x='Észlelés dátuma', y='Vízállás', 
+    fig_viz = px.area(vizallas_filtered.reset_index(), x='Észlelés dátuma', y='Vízállás', 
                       markers=True, line_shape='spline')
     
     # Kiszámítjuk a tengelyfeliratok helyét (minden nap 12:00-kor, így pontosan a reggeli és esti érték közé esik)
-    unique_dates = pd.Series(vizallas_kombinalt.index.date).unique()
+    unique_dates = pd.Series(vizallas_filtered.index.date).unique()
     tickvals = [pd.Timestamp(d) + pd.Timedelta(hours=12) for d in unique_dates]
     ticktext = [d.strftime("%m.%d.") for d in unique_dates]
     
@@ -72,7 +93,7 @@ try:
     st.subheader("💧 Reggeli hozam alakulása")
     
     # Plotly terület-görbe a hozamhoz (oszlopdiagram helyett)
-    fig_hozam = px.area(df[['Reggeli hozam']].dropna().reset_index(), x='Észlelés dátuma', y='Reggeli hozam',
+    fig_hozam = px.area(df_filtered[['Reggeli hozam']].dropna().reset_index(), x='Észlelés dátuma', y='Reggeli hozam',
                         markers=True, line_shape='spline', color_discrete_sequence=['#00b4d8'])
     fig_hozam.update_layout(xaxis_title="", yaxis_title="Hozam", hovermode="x unified", xaxis=dict(tickformat="%m.%d."))
     st.plotly_chart(fig_hozam, use_container_width=True)
