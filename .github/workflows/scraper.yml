@@ -1,0 +1,47 @@
+name: Run Daily Scraper
+
+on:
+  workflow_dispatch: # Lehetővé teszi a kézi indítást a GitHub felületéről
+  schedule:
+    # Minden nap 06:00-kor fut le UTC időzóna szerint.
+    # Ez a nyári időszámítás (CEST) alatt reggel 8:00, a téli (CET) alatt reggel 7:00 Magyarországon.
+    - cron: '0 9 * * *'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Letölti a kódodat a virtuális gépre
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # 2. Beállítja a Python környezetet
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      # 3. Telepíti a szükséges csomagokat a requirements.txt alapján
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 4. Lefuttatja a te szkriptedet
+      - name: Run scraper
+        run: python scraper.py
+
+      # 5. Visszatölti a módosított CSV fájlt a repository-ba
+      - name: Commit and push if CSV changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add tiszadorogma_adatok.csv
+          # Csak akkor tölt fel, ha tényleg van új adat
+          if git diff --staged --quiet; then
+            echo "No new data to commit."
+          else
+            git commit -m "Automated daily data scrape"
+            git push
+          fi
