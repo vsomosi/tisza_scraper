@@ -3,9 +3,17 @@ name: Run Daily Scraper
 on:
   workflow_dispatch: # Lehetővé teszi a kézi indítást a GitHub felületéről
   schedule:
-    # Minden nap 06:00-kor fut le UTC időzóna szerint.
-    # Ez a nyári időszámítás (CEST) alatt reggel 8:00, a téli (CET) alatt reggel 7:00 Magyarországon.
-    - cron: '0 9 * * *'
+    # Minden nap 07:00-kor fut le UTC időzóna szerint.
+    # Ez a nyári időszámítás (CEST) alatt reggel 9:00, a téli (CET) alatt reggel 8:00 Magyarországon.
+    - cron: '0 7 * * *'
+
+# Kifejezetten engedélyezzük a botnak, hogy fájlokat tölthessen fel (git push)
+permissions:
+  contents: write
+
+# A Node.js figyelmeztetés eltüntetése (kényszerítjük a legújabb verzió használatát)
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   scrape:
@@ -43,5 +51,5 @@ jobs:
             echo "No new data to commit."
           else
             git commit -m "Automated daily data scrape"
-            git push
+        git push origin HEAD:main
           fi
