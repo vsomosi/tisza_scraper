@@ -3,9 +3,9 @@ name: Run Daily Scraper
 on:
   workflow_dispatch: # Lehetővé teszi a kézi indítást a GitHub felületéről
   schedule:
-    # Minden nap 07:00-kor fut le UTC időzóna szerint.
-    # Ez a nyári időszámítás (CEST) alatt reggel 9:00, a téli (CET) alatt reggel 8:00 Magyarországon.
-    - cron: '0 7 * * *'
+    # 10:15 UTC (kerek órákban a GitHub szerverei túlterheltek lehetnek, ez segít a pontos elindulásban)
+    # Ez a nyári időszámítás (CEST) alatt 12:15, a téli (CET) alatt 11:15 Magyarországon.
+    - cron: '*/5 * * * *'
 
 # Kifejezetten engedélyezzük a botnak, hogy fájlokat tölthessen fel (git push)
 permissions:
