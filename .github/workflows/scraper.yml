@@ -5,7 +5,7 @@ on:
   schedule:
     # 17 perces eltolás, hogy elkerüljük a kerek órákkor jelentkező GitHub szerver túlterhelést.
     # UTC 8:17, 10:17, 12:17 (Magyar idő szerint nyáron kb. 10:17, 12:17, 14:17)
-    - cron: '17 8,10,12 * * *'
+    - cron: '17 8,10,12,14,16,18 * * *'
 
 # Kifejezetten engedélyezzük a botnak, hogy fájlokat tölthessen fel (git push)
 permissions:
