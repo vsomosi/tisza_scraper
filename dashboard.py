@@ -17,10 +17,10 @@ try:
     
     # 3. Adattisztítás: a '//' jelek lecserélése és oszlopok számmá alakítása
     df.replace('//', pd.NA, inplace=True)
-    df['Vízállás ma reggel'] = pd.to_numeric(df['Vízállás ma reggel'], errors='coerce')
-    df['Vízállás tegnap este'] = pd.to_numeric(df['Vízállás tegnap este'], errors='coerce')
-    df['Vízállás tegnap reggel'] = pd.to_numeric(df['Vízállás tegnap reggel'], errors='coerce')
-    df['Reggeli hozam'] = pd.to_numeric(df['Reggeli hozam'], errors='coerce')
+    df['Vízállás ma reggel'] = pd.to_numeric(df['Vízállás ma reggel'].astype(str).str.replace(',', '.'), errors='coerce')
+    df['Vízállás tegnap este'] = pd.to_numeric(df['Vízállás tegnap este'].astype(str).str.replace(',', '.'), errors='coerce')
+    df['Vízállás tegnap reggel'] = pd.to_numeric(df['Vízállás tegnap reggel'].astype(str).str.replace(',', '.'), errors='coerce')
+    df['Reggeli hozam'] = pd.to_numeric(df['Reggeli hozam'].astype(str).str.replace(',', '.'), errors='coerce')
     
     # Dátum beállítása indexként, a felesleges szóközök eltávolításával a biztonságosabb felismeréshez
     df['Észlelés dátuma'] = pd.to_datetime(df['Észlelés dátuma'].astype(str).str.replace(' ', ''), format='%Y.%m.%d.', errors='coerce')
