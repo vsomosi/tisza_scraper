@@ -1,16 +1,21 @@
 import requests
+import urllib3
 from bs4 import BeautifulSoup
 import csv
 import os
 from datetime import datetime
 import re
 
+# A hydroinfo.hu SSL tanúsítványa nem verifikálható a GitHub Actions környezetéből,
+# ezért kikapcsoljuk az ellenőrzést és elnémítjuk a figyelmeztetést.
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 def fetch_tiszadorogma_data():
     url = "https://www.hydroinfo.hu/tables/tishid.html"
     
     try:
         # 1. Weboldal letöltése
-        response = requests.get(url)
+        response = requests.get(url, verify=False)
         response.raise_for_status() # Hibát dob, ha nem sikeres a letöltés (pl. 404)
         response.encoding = 'utf-8' # Beállítjuk a magyar ékezetek megfelelő kezeléséhez
         
