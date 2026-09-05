@@ -13,7 +13,7 @@ csv_path = os.path.join(script_dir, "tiszadorogma_adatok.csv")
 
 try:
     # CSV beolvasása pontosvessző elválasztóval
-    df = pd.read_csv(csv_path, delimiter=';')
+    df = pd.read_csv(csv_path, delimiter=';', encoding='utf-8-sig', on_bad_lines='skip')
     
     # 3. Adattisztítás: a '//' jelek lecserélése és oszlopok számmá alakítása
     df.replace('//', pd.NA, inplace=True)
