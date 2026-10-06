@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import plotly.express as px
 
-# 1. Az oldal beállításai
+# 1. Az oldal beállításai.
 st.set_page_config(page_title="Tiszadorogma Dashboard", layout="wide")
 st.title("🌊 Tiszadorogma Vízállás és Hozam Dashboard")
 
