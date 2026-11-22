@@ -11,14 +11,19 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-version = st.segmented_control(
-    "Nézet verziója",
-    options=["📱 v2 (Mobilbarát)", "🖥️ v1 (Klasszikus)"],
-    default="📱 v2 (Mobilbarát)",
-    label_visibility="collapsed",
-)
+with st.container(horizontal=True, vertical_alignment="center", gap="small"):
+    st.markdown(
+        "<div style='font-size: clamp(1.3rem, 4vw, 1.9rem); font-weight: 700; line-height: 1.2; margin: 0;'>🌊 Tisza – Tiszadorogma</div>",
+        unsafe_allow_html=True,
+    )
+    version = st.segmented_control(
+        "Nézet",
+        options=["📱", "🖥️"],
+        default="📱",
+        label_visibility="collapsed",
+    )
 
-if version == "🖥️ v1 (Klasszikus)":
-    dashboard_v1.render()
+if version == "🖥️":
+    dashboard_v1.render(show_title=False)
 else:
-    dashboard_v2.render()
+    dashboard_v2.render(show_title=False)

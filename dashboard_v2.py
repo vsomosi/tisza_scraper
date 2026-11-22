@@ -105,7 +105,7 @@ def mobile_plotly_layout(fig: go.Figure, yaxis_title: str, height: int = 330) ->
     return fig
 
 
-def render() -> None:
+def render(show_title: bool = True) -> None:
     """Megjeleníti a mobilbarát (v2) Tiszadorogma dashboardot."""
     st.markdown(
         """
@@ -229,15 +229,21 @@ def render() -> None:
     valid_flows = df["Reggeli hozam"].dropna()
     flow_delta = (valid_flows.iloc[-1] - valid_flows.iloc[-2]) if len(valid_flows) >= 2 else None
 
-    st.markdown(
-        f"""
-        <div class="hero-header">
-            <div class="hero-title">🌊 Tisza – Tiszadorogma</div>
-            <div class="hero-subtitle">Utolsó adat: <b>{latest_date.strftime('%Y.%m.%d.')}</b></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    if show_title:
+        st.markdown(
+            f"""
+            <div class="hero-header">
+                <div class="hero-title">🌊 Tisza – Tiszadorogma</div>
+                <div class="hero-subtitle">Utolsó adat: <b>{latest_date.strftime('%Y.%m.%d.')}</b></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"<div class='hero-subtitle' style='margin-bottom: 0.4rem;'>Utolsó adat: <b>{latest_date.strftime('%Y.%m.%d.')}</b></div>",
+            unsafe_allow_html=True,
+        )
 
     preset = st.segmented_control(
         "Időszak",

@@ -6,9 +6,10 @@ import plotly.express as px
 import streamlit as st
 
 
-def render() -> None:
+def render(show_title: bool = True) -> None:
     """Megjeleníti a klasszikus (v1) Tiszadorogma dashboardot."""
-    st.title("🌊 Tiszadorogma Vízállás és Hozam Dashboard")
+    if show_title:
+        st.title("🌊 Tiszadorogma Vízállás és Hozam Dashboard")
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     csv_path = os.path.join(script_dir, "tiszadorogma_adatok.csv")
