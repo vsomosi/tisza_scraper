@@ -48,9 +48,10 @@ def fetch_tiszadorogma_data():
             print("Nem található 'Tiszadorogma' a weboldalon lévő táblázatban.")
             return
 
-        # Tiszapalkonya reggeli hozam adatának (7. index) beillesztése Tiszadorogma adatai közé
-        if tiszapalkonya_data and len(tiszapalkonya_data) > 7 and len(target_data) > 7:
-            target_data[7] = tiszapalkonya_data[7]
+        # Tiszapalkonya reggeli hozam (7. index) és vízhőmérséklet (8. index) adatainak beillesztése
+        for idx in (7, 8):
+            if tiszapalkonya_data and len(tiszapalkonya_data) > idx and len(target_data) > idx:
+                target_data[idx] = tiszapalkonya_data[idx]
 
         # 4. Adatok mentése CSV fájlba
         script_dir = os.path.dirname(os.path.abspath(__file__))

@@ -111,7 +111,7 @@ def render() -> None:
         """
         <style>
             .block-container {
-                padding-top: 1.2rem;
+                padding-top: 3.5rem;
                 padding-bottom: 2rem;
                 padding-left: 1rem;
                 padding-right: 1rem;
@@ -353,8 +353,8 @@ def render() -> None:
         unsafe_allow_html=True,
     )
 
-    tab_water, tab_flow, tab_pressure, tab_combined, tab_table = st.tabs(
-        ["📈 Vízállás", "💧 Hozam", "🌬️ Légnyomás", "🔀 Összevetés", "📋 Táblázat"]
+    tab_water, tab_flow, tab_temp, tab_pressure, tab_combined, tab_table = st.tabs(
+        ["📈 Vízállás", "💧 Hozam", "🌡️ Vízhő", "🌬️ Légnyomás", "🔀 Összevetés", "📋 Táblázat"]
     )
 
     with tab_water:
@@ -429,6 +429,28 @@ def render() -> None:
             )
             mobile_plotly_layout(fig_flow, "Hozam (m³/s)", height=340)
             st.plotly_chart(fig_flow, use_container_width=True, config=PLOTLY_CONFIG)
+
+    with tab_temp:
+        temp_series = df_filtered["Reggeli víz hőmérséklet"].dropna()
+        if temp_series.empty:
+            st.info("A választott időszakra még nincs vízhőmérséklet adat.")
+        else:
+            fig_temp = go.Figure()
+            fig_temp.add_trace(
+                go.Scatter(
+                    x=temp_series.index,
+                    y=temp_series.values,
+                    mode="lines+markers",
+                    name="Vízhőmérséklet",
+                    line=dict(color="#f59e0b", width=3, shape="spline"),
+                    marker=dict(size=7, color="#d97706"),
+                    fill="tozeroy",
+                    fillcolor="rgba(245, 158, 11, 0.18)",
+                    hovertemplate="%{x|%Y.%m.%d.}<br><b>%{y:.1f} °C</b><extra></extra>",
+                )
+            )
+            mobile_plotly_layout(fig_temp, "Vízhőmérséklet (°C)", height=340)
+            st.plotly_chart(fig_temp, use_container_width=True, config=PLOTLY_CONFIG)
 
     with tab_pressure:
         if pressure_filtered.empty:
@@ -545,6 +567,7 @@ def render() -> None:
             "Változás 24 óra alatt",
             "Vízállás tegnap este",
             "Reggeli hozam",
+            "Reggeli víz hőmérséklet",
             "Reggeli jégállapot",
         ]
         available_cols = [c for c in cols if c in df_filtered.columns]
