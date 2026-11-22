@@ -105,6 +105,29 @@ def mobile_plotly_layout(fig: go.Figure, yaxis_title: str, height: int = 330) ->
     return fig
 
 
+def add_minmax_markers(fig: go.Figure, series: pd.Series, fmt: str = ".0f") -> None:
+    """Kiemeli a grafikonon a választott időszak minimum és maximum pontját értékkel."""
+    if series.empty:
+        return
+    idx_max = series.idxmax()
+    idx_min = series.idxmin()
+    val_max = series.loc[idx_max]
+    val_min = series.loc[idx_min]
+    fig.add_trace(
+        go.Scatter(
+            x=[idx_max, idx_min],
+            y=[val_max, val_min],
+            mode="markers+text",
+            text=[f"Max: {val_max:{fmt}}", f"Min: {val_min:{fmt}}"],
+            textposition=["top center", "bottom center"],
+            marker=dict(size=9, color=["#ef4444", "#10b981"], line=dict(width=1.5, color="white")),
+            cliponaxis=False,
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+
+
 def render(show_title: bool = True) -> None:
     """Megjeleníti a mobilbarát (v2) Tiszadorogma dashboardot."""
     st.markdown(
@@ -381,20 +404,7 @@ def render(show_title: bool = True) -> None:
                     hovertemplate="%{x|%Y.%m.%d. %H:%M}<br><b>%{y:.0f} cm</b><extra></extra>",
                 )
             )
-            idx_max = water_filtered.idxmax()
-            idx_min = water_filtered.idxmin()
-            fig_water.add_trace(
-                go.Scatter(
-                    x=[idx_max, idx_min],
-                    y=[water_filtered.loc[idx_max], water_filtered.loc[idx_min]],
-                    mode="markers+text",
-                    text=[f"Max: {water_filtered.loc[idx_max]:.0f}", f"Min: {water_filtered.loc[idx_min]:.0f}"],
-                    textposition=["top center", "bottom center"],
-                    marker=dict(size=9, color=["#ef4444", "#10b981"], line=dict(width=1.5, color="white")),
-                    showlegend=False,
-                    hoverinfo="skip",
-                )
-            )
+            add_minmax_markers(fig_water, water_filtered, fmt=".0f")
             mobile_plotly_layout(fig_water, "Vízállás (cm)", height=340)
             st.plotly_chart(fig_water, use_container_width=True, config=PLOTLY_CONFIG)
 
@@ -433,6 +443,7 @@ def render(show_title: bool = True) -> None:
                     hovertemplate="%{x|%Y.%m.%d.}<br><b>%{y:g} m³/s</b><extra></extra>",
                 )
             )
+            add_minmax_markers(fig_flow, flow_series, fmt="g")
             mobile_plotly_layout(fig_flow, "Hozam (m³/s)", height=340)
             st.plotly_chart(fig_flow, use_container_width=True, config=PLOTLY_CONFIG)
 
@@ -455,6 +466,7 @@ def render(show_title: bool = True) -> None:
                     hovertemplate="%{x|%Y.%m.%d.}<br><b>%{y:.1f} °C</b><extra></extra>",
                 )
             )
+            add_minmax_markers(fig_temp, temp_series, fmt=".1f")
             mobile_plotly_layout(fig_temp, "Vízhőmérséklet (°C)", height=340)
             st.plotly_chart(fig_temp, use_container_width=True, config=PLOTLY_CONFIG)
 
@@ -475,23 +487,7 @@ def render(show_title: bool = True) -> None:
                     hovertemplate="%{x|%Y.%m.%d. %H:%M}<br><b>%{y:.1f} hPa</b><extra></extra>",
                 )
             )
-            p_max_idx = pressure_filtered.idxmax()
-            p_min_idx = pressure_filtered.idxmin()
-            fig_pressure.add_trace(
-                go.Scatter(
-                    x=[p_max_idx, p_min_idx],
-                    y=[pressure_filtered.loc[p_max_idx], pressure_filtered.loc[p_min_idx]],
-                    mode="markers+text",
-                    text=[
-                        f"Max: {pressure_filtered.loc[p_max_idx]:.1f}",
-                        f"Min: {pressure_filtered.loc[p_min_idx]:.1f}",
-                    ],
-                    textposition=["top center", "bottom center"],
-                    marker=dict(size=8, color=["#ef4444", "#10b981"], line=dict(width=1.5, color="white")),
-                    showlegend=False,
-                    hoverinfo="skip",
-                )
-            )
+            add_minmax_markers(fig_pressure, pressure_filtered, fmt=".1f")
             fig_pressure.add_hline(
                 y=1013.25,
                 line_dash="dash",
