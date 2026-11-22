@@ -98,3 +98,5 @@ def fetch_tiszadorogma_data():
 
 if __name__ == "__main__":
     fetch_tiszadorogma_data()
+    from pressure_scraper import fetch_pressure_data
+    fetch_pressure_data()

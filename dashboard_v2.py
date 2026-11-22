@@ -51,6 +51,24 @@ def load_data(csv_path: str) -> tuple[pd.DataFrame, pd.Series]:
     return df, water_series
 
 
+@st.cache_data(ttl=300)
+def load_pressure_data(csv_path: str) -> pd.Series:
+    """Beolvassa a legnyomas_adatok.csv órás légnyomás idősorát."""
+    if not os.path.isfile(csv_path):
+        return pd.Series(dtype=float, name="Légnyomás (hPa)")
+    p_df = pd.read_csv(csv_path, delimiter=";", encoding="utf-8-sig", on_bad_lines="skip")
+    if p_df.empty or "Időpont" not in p_df.columns or "Légnyomás (hPa)" not in p_df.columns:
+        return pd.Series(dtype=float, name="Légnyomás (hPa)")
+    p_df["Időpont"] = pd.to_datetime(p_df["Időpont"], errors="coerce")
+    p_df["Légnyomás (hPa)"] = pd.to_numeric(
+        p_df["Légnyomás (hPa)"].astype(str).str.replace(",", "."), errors="coerce"
+    )
+    p_df = p_df.dropna(subset=["Időpont", "Légnyomás (hPa)"]).set_index("Időpont").sort_index()
+    p_series = p_df["Légnyomás (hPa)"]
+    p_series = p_series[~p_series.index.duplicated(keep="last")]
+    return p_series
+
+
 def format_delta_badge(delta: float | None, unit: str) -> tuple[str, str]:
     """Visszaadja a változás szövegét és CSS osztályát."""
     if delta is None or pd.isna(delta):
@@ -125,9 +143,15 @@ def render() -> None:
             }
             @media (min-width: 768px) {
                 .kpi-grid {
-                    grid-template-columns: repeat(4, minmax(0, 1fr));
+                    grid-template-columns: repeat(5, minmax(0, 1fr));
                     gap: 0.9rem;
                 }
+                .kpi-card-wide {
+                    grid-column: span 1 !important;
+                }
+            }
+            .kpi-card-wide {
+                grid-column: span 2;
             }
             .kpi-card {
                 background: rgba(128, 128, 128, 0.08);
@@ -177,12 +201,15 @@ def render() -> None:
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     csv_path = os.path.join(script_dir, "tiszadorogma_adatok.csv")
+    pressure_csv_path = os.path.join(script_dir, "legnyomas_adatok.csv")
 
     try:
         df, water_series = load_data(csv_path)
     except FileNotFoundError:
         st.error("A tiszadorogma_adatok.csv fájl nem található. Futtasd előbb a `git pull`-t vagy a `scraper.py`-t!")
         st.stop()
+
+    pressure_series = load_pressure_data(pressure_csv_path)
 
     if df.empty:
         st.warning("A CSV fájl üres vagy nem tartalmaz érvényes dátumokat.")
@@ -243,6 +270,11 @@ def render() -> None:
 
     water_filtered = water_series[(water_series.index.date >= start_date) & (water_series.index.date <= end_date)]
     df_filtered = df[(df.index.date >= start_date) & (df.index.date <= end_date)]
+    pressure_filtered = (
+        pressure_series[(pressure_series.index.date >= start_date) & (pressure_series.index.date <= end_date)]
+        if not pressure_series.empty
+        else pressure_series
+    )
 
     water_delta_text, water_delta_cls = format_delta_badge(latest_delta, "cm")
     if flow_delta is not None and not pd.isna(flow_delta):
@@ -251,6 +283,33 @@ def render() -> None:
         flow_badge_text = f"{flow_sign}{flow_delta:g} m³/s"
     else:
         flow_badge_cls, flow_badge_text = "badge-flat", "Napi mérés"
+
+    # Aznapi aktuális légnyomás és 3 órás trend számítása
+    if not pressure_series.empty:
+        p_latest_ts = pressure_series.index.max()
+        p_latest_val = pressure_series.iloc[-1]
+        pressure_val_str = f"{p_latest_val:.1f} hPa"
+        pressure_label = f"Légnyomás ({p_latest_ts.strftime('%m.%d. %H:%M')})"
+
+        ref_target = p_latest_ts - pd.Timedelta(hours=3)
+        earlier_vals = pressure_series[pressure_series.index <= ref_target]
+        if not earlier_vals.empty:
+            p_delta = p_latest_val - earlier_vals.iloc[-1]
+            if p_delta >= 0.5:
+                p_badge_cls = "badge-up"
+                p_badge_text = f"▲ Növekvő (+{p_delta:.1f} hPa / 3ó)"
+            elif p_delta <= -0.5:
+                p_badge_cls = "badge-down"
+                p_badge_text = f"▼ Csökkenő ({p_delta:.1f} hPa / 3ó)"
+            else:
+                p_badge_cls = "badge-flat"
+                p_badge_text = f"● Stabil ({p_delta:+.1f} hPa / 3ó)"
+        else:
+            p_badge_cls, p_badge_text = "badge-flat", "Nincs előző adat"
+    else:
+        pressure_val_str = "–"
+        pressure_label = "Aktuális légnyomás"
+        p_badge_cls, p_badge_text = "badge-flat", "Nincs légnyomás adat"
 
     w_min = f"{water_filtered.min():.0f}" if not water_filtered.empty else "–"
     w_max = f"{water_filtered.max():.0f}" if not water_filtered.empty else "–"
@@ -284,13 +343,18 @@ def render() -> None:
                 <div class="kpi-value">{ice_str}</div>
                 <span class="kpi-badge badge-flat">{temp_str}</span>
             </div>
+            <div class="kpi-card kpi-card-wide">
+                <div class="kpi-label">{pressure_label}</div>
+                <div class="kpi-value">{pressure_val_str}</div>
+                <span class="kpi-badge {p_badge_cls}">{p_badge_text}</span>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    tab_water, tab_flow, tab_combined, tab_table = st.tabs(
-        ["📈 Vízállás", "💧 Hozam", "🔀 Összevetés", "📋 Táblázat"]
+    tab_water, tab_flow, tab_pressure, tab_combined, tab_table = st.tabs(
+        ["📈 Vízállás", "💧 Hozam", "🌬️ Légnyomás", "🔀 Összevetés", "📋 Táblázat"]
     )
 
     with tab_water:
@@ -366,33 +430,114 @@ def render() -> None:
             mobile_plotly_layout(fig_flow, "Hozam (m³/s)", height=340)
             st.plotly_chart(fig_flow, use_container_width=True, config=PLOTLY_CONFIG)
 
-    with tab_combined:
-        flow_series = df_filtered["Reggeli hozam"].dropna()
-        if water_filtered.empty or flow_series.empty:
-            st.info("Az összevetéshez mindkét adatsor szükséges.")
+    with tab_pressure:
+        if pressure_filtered.empty:
+            st.info("A választott időszakra még nincs légnyomás adat. Futtasd a `pressure_scraper.py` szkriptet!")
         else:
-            fig_combo = make_subplots(specs=[[{"secondary_y": True}]])
-            fig_combo.add_trace(
+            fig_pressure = go.Figure()
+            fig_pressure.add_trace(
                 go.Scatter(
-                    x=water_filtered.index,
-                    y=water_filtered.values,
-                    name="Vízállás (cm)",
-                    line=dict(color="#0ea5e9", width=2.5, shape="spline"),
-                ),
-                secondary_y=False,
+                    x=pressure_filtered.index,
+                    y=pressure_filtered.values,
+                    mode="lines",
+                    name="Légnyomás",
+                    line=dict(color="#8b5cf6", width=2.5, shape="spline"),
+                    fill="tozeroy",
+                    fillcolor="rgba(139, 92, 246, 0.14)",
+                    hovertemplate="%{x|%Y.%m.%d. %H:%M}<br><b>%{y:.1f} hPa</b><extra></extra>",
+                )
             )
-            fig_combo.add_trace(
+            p_max_idx = pressure_filtered.idxmax()
+            p_min_idx = pressure_filtered.idxmin()
+            fig_pressure.add_trace(
                 go.Scatter(
-                    x=flow_series.index,
-                    y=flow_series.values,
-                    name="Hozam (m³/s)",
-                    line=dict(color="#14b8a6", width=2.5, dash="dot", shape="spline"),
-                ),
-                secondary_y=True,
+                    x=[p_max_idx, p_min_idx],
+                    y=[pressure_filtered.loc[p_max_idx], pressure_filtered.loc[p_min_idx]],
+                    mode="markers+text",
+                    text=[
+                        f"Max: {pressure_filtered.loc[p_max_idx]:.1f}",
+                        f"Min: {pressure_filtered.loc[p_min_idx]:.1f}",
+                    ],
+                    textposition=["top center", "bottom center"],
+                    marker=dict(size=8, color=["#ef4444", "#10b981"], line=dict(width=1.5, color="white")),
+                    showlegend=False,
+                    hoverinfo="skip",
+                )
             )
-            mobile_plotly_layout(fig_combo, "Vízállás (cm)", height=350)
-            fig_combo.update_yaxes(title_text="Hozam (m³/s)", secondary_y=True, fixedrange=True, showgrid=False)
-            st.plotly_chart(fig_combo, use_container_width=True, config=PLOTLY_CONFIG)
+            fig_pressure.add_hline(
+                y=1013.25,
+                line_dash="dash",
+                line_color="rgba(148, 163, 184, 0.7)",
+                annotation_text="1013.25 hPa (normál)",
+                annotation_position="bottom right",
+            )
+            p_pad = 3
+            mobile_plotly_layout(fig_pressure, "Légnyomás (hPa)", height=350)
+            fig_pressure.update_yaxes(
+                range=[pressure_filtered.min() - p_pad, pressure_filtered.max() + p_pad]
+            )
+            st.plotly_chart(fig_pressure, use_container_width=True, config=PLOTLY_CONFIG)
+
+    with tab_combined:
+        combo_choice = st.segmented_control(
+            "Összevetés típusa",
+            options=["Vízállás + Légnyomás", "Vízállás + Hozam"],
+            default="Vízállás + Légnyomás",
+            label_visibility="collapsed",
+        )
+        if combo_choice == "Vízállás + Légnyomás":
+            if water_filtered.empty or pressure_filtered.empty:
+                st.info("Az összevetéshez vízállás és légnyomás adat is szükséges.")
+            else:
+                fig_combo = make_subplots(specs=[[{"secondary_y": True}]])
+                fig_combo.add_trace(
+                    go.Scatter(
+                        x=water_filtered.index,
+                        y=water_filtered.values,
+                        name="Vízállás (cm)",
+                        line=dict(color="#0ea5e9", width=2.5, shape="spline"),
+                    ),
+                    secondary_y=False,
+                )
+                fig_combo.add_trace(
+                    go.Scatter(
+                        x=pressure_filtered.index,
+                        y=pressure_filtered.values,
+                        name="Légnyomás (hPa)",
+                        line=dict(color="#8b5cf6", width=2, dash="dot", shape="spline"),
+                    ),
+                    secondary_y=True,
+                )
+                mobile_plotly_layout(fig_combo, "Vízállás (cm)", height=350)
+                fig_combo.update_yaxes(title_text="Légnyomás (hPa)", secondary_y=True, fixedrange=True, showgrid=False)
+                st.plotly_chart(fig_combo, use_container_width=True, config=PLOTLY_CONFIG)
+        else:
+            flow_series = df_filtered["Reggeli hozam"].dropna()
+            if water_filtered.empty or flow_series.empty:
+                st.info("Az összevetéshez mindkét adatsor szükséges.")
+            else:
+                fig_combo = make_subplots(specs=[[{"secondary_y": True}]])
+                fig_combo.add_trace(
+                    go.Scatter(
+                        x=water_filtered.index,
+                        y=water_filtered.values,
+                        name="Vízállás (cm)",
+                        line=dict(color="#0ea5e9", width=2.5, shape="spline"),
+                    ),
+                    secondary_y=False,
+                )
+                fig_combo.add_trace(
+                    go.Scatter(
+                        x=flow_series.index,
+                        y=flow_series.values,
+                        name="Hozam (m³/s)",
+                        line=dict(color="#14b8a6", width=2.5, dash="dot", shape="spline"),
+                    ),
+                    secondary_y=True,
+                )
+                mobile_plotly_layout(fig_combo, "Vízállás (cm)", height=350)
+                fig_combo.update_yaxes(title_text="Hozam (m³/s)", secondary_y=True, fixedrange=True, showgrid=False)
+                st.plotly_chart(fig_combo, use_container_width=True, config=PLOTLY_CONFIG)
 
     with tab_table:
         cols = [
